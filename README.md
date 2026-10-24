@@ -26,12 +26,22 @@ Cada trilha tem um **Gabarito do professor** com os 60 exercícios e as resposta
 
 - Cada estrela do labirinto vale 10 pontos (3 estrelas sem erro, 2 com um erro, 1 com mais).
 - No Desafio, cada acerto vale 10, 20, 30 ou 40 pontos, conforme o nível. Conta o melhor resultado de cada nível.
-- Nesta versão, o ranking fica salvo no navegador do aparelho onde se joga (ideal para um computador ou tablet da sala).
+- O ranking é online, no Firebase (Firestore, projeto `jogologico-fc23d`): todos os aparelhos da turma veem o mesmo placar, ao vivo.
+- Se o Firebase estiver fora do ar, o jogo continua funcionando e mostra o ranking salvo no próprio aparelho.
+
+## Configurar o Firebase (uma vez só)
+
+1. Abra o [console do Firebase](https://console.firebase.google.com/) → projeto **jogologico-fc23d** → **Firestore Database**.
+2. Na aba **Regras**, apague o que estiver lá, cole o conteúdo do arquivo [`firestore.rules`](firestore.rules) e clique em **Publicar**.
+
+O que a regra faz:
+
+- Qualquer pessoa pode **ver** o ranking.
+- Cada jogador pode **criar e atualizar** o próprio registro, só com dados válidos: nome de 2 a 24 letras, turma até 10, no máximo 720 estrelas e 1000 pontos de Desafio, e os pontos têm que bater com a conta (estrelas × 10 + Desafio).
+- Ninguém **apaga** pelo jogo. Para zerar o ranking, apague os documentos da coleção `ranking` pelo console.
+- Qualquer outra coleção fica bloqueada.
 
 ## Publicar no GitHub Pages
 
 Em **Settings → Pages**, escolha *Deploy from a branch*, branch `main`, pasta `/ (root)`. O jogo fica em `https://glauciorsilva.github.io/Jogo-de-logica/`.
 
-## Próximo passo
-
-Ligar o ranking a um banco online (por exemplo, Firebase) para juntar os pontos de todos os aparelhos da turma.

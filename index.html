@@ -182,6 +182,9 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 footer{margin-top:36px;font-size:.85rem;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
+<!-- Firebase (ranking online) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -523,7 +526,7 @@ function totals(p){
   const stars=p.prog.flat().reduce((a,b)=>a+b,0),phases=p.prog.flat().filter(Boolean).length,quiz=p.quiz.reduce((a,b)=>a+b,0);
   return {stars,phases,quiz,points:stars*10+quiz};
 }
-function record(p){const t=totals(p);return {name:p.name,turma:p.turma||'',prog:p.prog,quiz:p.quiz,...t,updatedAt:Date.now()}}
+function record(p){const t=totals(p);return {name:p.name,turma:p.turma||'',prog:p.prog,quiz:p.quiz,stars:t.stars,phases:t.phases,quizPts:t.quiz,points:t.points,updatedAt:Date.now()}}
 
 let me=null;               // jogador atual
 let db=null, rankRows=null, rankOnline=false;
@@ -536,7 +539,7 @@ async function saveRemote(){
   if(writing){again=true;return}
   writing=true;
   try{await db.collection('ranking').doc(me.id).set(record(me))}
-  catch(e){if(e&&e.code==='invalid_argument'){rankOnline=false;renderRanks()}}
+  catch(e){if(e&&(e.code==='invalid_argument'||e.code==='permission-denied')){rankOnline=false;renderRanks()}}
   writing=false;
   if(again){again=false;saveRemote()}
 }
@@ -555,8 +558,26 @@ function renderRanks(){
   for(const id of ['rankLogin','rankHome'])$(id).innerHTML=head+list+rule;
 }
 
+// Banco do ranking: aqui no Claude usa o banco do próprio artifact; no GitHub Pages usa o Firebase (Firestore).
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyD3v6KY2fAfK2ZX0cEv4HNovcIyOM_vvks",
+  authDomain:"jogologico-fc23d.firebaseapp.com",
+  projectId:"jogologico-fc23d",
+  storageBucket:"jogologico-fc23d.firebasestorage.app",
+  messagingSenderId:"637454012053",
+  appId:"1:637454012053:web:35542974fafe89d962d59c",
+  measurementId:"G-FC3SZ9N9LF"
+};
+function firebaseDb(){
+  try{
+    if(!window.firebase||!firebase.firestore)return null;
+    if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+    return firebase.firestore();
+  }catch(e){return null}
+}
 async function connectDb(){
-  try{db=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){db=null}
+  if(window.claude&&window.claude.use){try{db=await window.claude.use('db')}catch(e){db=null}}
+  if(!db)db=firebaseDb();
   if(!db)return;
   try{
     db.collection('ranking').orderBy('points','desc').limit(100).onSnapshot(snap=>{

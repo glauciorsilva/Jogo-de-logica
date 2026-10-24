@@ -1,0 +1,34 @@
+rules_version = '2';
+
+// Regras do ranking do Labirinto das Contas
+// - Qualquer pessoa pode VER o ranking.
+// - Qualquer pessoa pode CRIAR ou ATUALIZAR o próprio registro, desde que os dados sejam válidos.
+// - Ninguém apaga registros pelo jogo (só o professor, pelo console do Firebase).
+// - Qualquer outra coleção fica bloqueada.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /ranking/{jogador} {
+      allow read: if true;
+      allow create, update: if jogador.size() <= 60 && registroValido(request.resource.data);
+      allow delete: if false;
+    }
+
+    function registroValido(d) {
+      return d.keys().hasOnly(['name', 'turma', 'prog', 'quiz', 'stars', 'phases', 'quizPts', 'points', 'updatedAt'])
+        && d.name is string && d.name.size() >= 2 && d.name.size() <= 24
+        && d.turma is string && d.turma.size() <= 10
+        && d.prog is list && d.prog.size() == 4
+        && d.quiz is list && d.quiz.size() == 4
+        && d.stars is int && d.stars >= 0 && d.stars <= 720          // 4 níveis × 60 fases × 3 estrelas
+        && d.phases is int && d.phases >= 0 && d.phases <= 240
+        && d.quizPts is int && d.quizPts >= 0 && d.quizPts <= 1000   // 100 + 200 + 300 + 400
+        && d.points is int && d.points == d.stars * 10 + d.quizPts
+        && d.updatedAt is int;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
