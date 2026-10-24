@@ -76,7 +76,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .pts{font-family:var(--display);font-weight:700;font-size:1.1rem;background:var(--surface);border:2px solid var(--line);border-radius:99px;padding:4px 14px;font-variant-numeric:tabular-nums}
 
 /* Início */
-.hero{display:grid;gap:8px;margin-bottom:22px}
+.hero{display:grid;gap:8px;align-content:start}
 .hero h1{font-size:clamp(1.9rem,5.5vw,2.8rem);font-weight:700;letter-spacing:-.01em}
 .hero h1 span{color:var(--accent)}
 .hero p{margin:0;max-width:58ch;color:var(--muted);font-size:1.05rem}
@@ -99,6 +99,9 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .level small{color:var(--muted);font-variant-numeric:tabular-nums}
 .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:28px;align-items:start}
 @media (max-width:760px){.duo{grid-template-columns:minmax(0,1fr)}}
+.duo.top{margin:0 0 26px}
+.duo.quizrow{grid-template-columns:minmax(0,1fr)}
+@media (min-width:761px){.quizrow .lvpick{grid-template-columns:repeat(4,1fr)}}
 .quizcard{display:grid;gap:12px}
 .quizcard p{margin:0;color:var(--muted)}
 .lvpick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -110,7 +113,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 /* Ranking */
 .rank{display:grid;gap:10px}
 .rank .src{font-size:.85rem;color:var(--muted);margin:0}
-.rank ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.rank ol{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:440px;overflow-y:auto;overscroll-behavior:contain}
 .rank li{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 10px;border-radius:12px;background:var(--bg)}
 .rank li.mine{background:var(--me);outline:2px solid var(--accent)}
 .pos{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:.95rem;background:var(--surface);color:var(--muted);font-variant-numeric:tabular-nums}
@@ -223,9 +226,11 @@ footer{margin-top:36px;font-size:.85rem;color:var(--muted)}
     <div class="player">
       <div class="avatar" id="pAvatar"></div>
       <div class="who"><span class="muted">Jogando agora</span><b id="pName"></b></div>
+      <span class="pts" id="pPos" hidden></span>
       <span class="pts" id="pPts"></span>
       <button class="btn ghost small" id="logout">Trocar jogador</button>
     </div>
+    <div class="duo top">
     <header class="hero">
       <h1>Labirinto das <span>Contas</span></h1>
       <p>Encontre o caminho até a bandeira. No meio do labirinto tem uma porta trancada: resolva a conta certa para ela abrir.</p>
@@ -235,16 +240,17 @@ footer{margin-top:36px;font-size:.85rem;color:var(--muted)}
         <li><span class="chip flag">⚑</span> chegada</li>
       </ul>
     </header>
+      <div class="panel rank" id="rankHome"></div>
+    </div>
     <div class="sectionhead"><h2>Trilhas do labirinto</h2><span class="muted">60 fases em cada nível</span></div>
     <div class="levels" id="levels"></div>
-    <div class="duo">
+    <div class="duo quizrow">
       <div class="panel quizcard">
         <span class="eyebrow">Modo rápido</span>
         <h2>Desafio de Matemática</h2>
         <p>10 perguntas de matemática básica: somar, tirar, dobro, metade e tabuada. Cada acerto vale pontos para o ranking.</p>
         <div class="lvpick" id="lvpick"></div>
       </div>
-      <div class="panel rank" id="rankHome"></div>
     </div>
     <footer>Protótipo para o 3º ano · 4 níveis × 60 fases + Desafio de Matemática.</footer>
   </section>
@@ -520,13 +526,14 @@ const lsGet=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const slug=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
 const emptyProg=()=>LEVELS.map(()=>Array(PHASES).fill(0));
-function normProg(p){const out=emptyProg();if(Array.isArray(p))p.forEach((row,L)=>{if(Array.isArray(row)&&L<4)row.forEach((v,i)=>{if(i<PHASES)out[L][i]=Math.max(0,Math.min(3,+v||0))})});return out}
+const encProg=prog=>prog.map(row=>row.join(''));
+function normProg(p){const out=emptyProg();if(Array.isArray(p))p.forEach((row,L)=>{if(typeof row==='string')row=row.split('');if(Array.isArray(row)&&L<4)row.forEach((v,i)=>{if(i<PHASES)out[L][i]=Math.max(0,Math.min(3,+v||0))})});return out}
 function normQuiz(q){return LEVELS.map((_,L)=>Math.max(0,+(Array.isArray(q)?q[L]:0)||0))}
 function totals(p){
   const stars=p.prog.flat().reduce((a,b)=>a+b,0),phases=p.prog.flat().filter(Boolean).length,quiz=p.quiz.reduce((a,b)=>a+b,0);
   return {stars,phases,quiz,points:stars*10+quiz};
 }
-function record(p){const t=totals(p);return {name:p.name,turma:p.turma||'',prog:p.prog,quiz:p.quiz,stars:t.stars,phases:t.phases,quizPts:t.quiz,points:t.points,updatedAt:Date.now()}}
+function record(p){const t=totals(p);return {name:p.name,turma:p.turma||'',prog:encProg(p.prog),quiz:p.quiz,stars:t.stars,phases:t.phases,quizPts:t.quiz,points:t.points,updatedAt:Date.now()}}
 
 let me=null;               // jogador atual
 let db=null, rankRows=null, rankOnline=false;
@@ -546,10 +553,12 @@ async function saveRemote(){
 function persist(){saveLocal();saveRemote();renderPlayer();if(!rankOnline)renderRanks()}
 
 function localRows(){return Object.values(players()).map(p=>{const pp={...p,prog:normProg(p.prog),quiz:normQuiz(p.quiz)};return {id:slug(p.name)+(p.turma?'@'+slug(p.turma):''),name:p.name,turma:p.turma,...totals(pp)}})}
+function sortedRows(){return (rankOnline&&rankRows?rankRows:localRows()).slice().sort((a,b)=>b.points-a.points||b.stars-a.stars||a.name.localeCompare(b.name))}
 function renderRanks(){
-  const rows=(rankOnline&&rankRows?rankRows:localRows()).slice().sort((a,b)=>b.points-a.points||b.stars-a.stars||a.name.localeCompare(b.name));
+  if(me)renderPlayer();
+  const rows=sortedRows();
   const head=`<div class="sectionhead" style="margin:0"><h2>Ranking</h2><span class="muted">${rankOnline?'da turma, ao vivo':'neste aparelho'}</span></div>`;
-  const list=rows.length?`<ol>${rows.slice(0,15).map((p,k)=>`<li class="${me&&p.id===me.id?'mine':''}">
+  const list=rows.length?`<ol>${rows.map((p,k)=>`<li class="${me&&p.id===me.id?'mine':''}">
       <span class="pos ${k<3?'p'+(k+1):''}">${k+1}</span>
       <span class="nm"><b>${esc(p.name)}</b><small>${p.turma?'Turma '+esc(p.turma)+' · ':''}${p.phases} fases · ★ ${p.stars}</small></span>
       <span class="sc">${p.points}<small>pontos</small></span></li>`).join('')}</ol>`
@@ -580,7 +589,7 @@ async function connectDb(){
   if(!db)db=firebaseDb();
   if(!db)return;
   try{
-    db.collection('ranking').orderBy('points','desc').limit(100).onSnapshot(snap=>{
+    db.collection('ranking').orderBy('points','desc').limit(500).onSnapshot(snap=>{
       rankRows=snap.docs.map(d=>{const v=d.data()||{};return {id:d.id,name:String(v.name||'Jogador').slice(0,24),turma:String(v.turma||'').slice(0,10),points:+v.points||0,stars:+v.stars||0,phases:+v.phases||0}});
       rankOnline=true;renderRanks();
     },()=>{rankOnline=false;renderRanks()});
@@ -603,9 +612,8 @@ async function syncLocalPlayers(){
         loc.prog=loc.prog.map((row,L)=>row.map((x,i)=>Math.max(x,rp[L][i])));
         loc.quiz=loc.quiz.map((x,L)=>Math.max(x,rq[L]));}
       const pts=totals(loc).points;
-      if(pts===0)continue;
       all[id]=record(loc);changed=true;
-      if(pts!==remotePts)await ref.set(record(loc));
+      if(!snap.exists||pts!==remotePts)await ref.set(record(loc));
     }catch(e){if(e&&(e.code==='permission-denied'||e.code==='invalid_argument'||e.code==='revoked'))break}
   }
   if(changed){lsSet(LS_PLAYERS,all);if(me&&all[me.id]){me.prog=normProg(all[me.id].prog);me.quiz=normQuiz(all[me.id].quiz);renderPlayer()}}
@@ -618,7 +626,7 @@ async function mergeRemote(){
       me.prog=me.prog.map((row,L)=>row.map((s,i)=>Math.max(s,rp[L][i])));
       me.quiz=me.quiz.map((s,L)=>Math.max(s,rq[L]));}
     saveLocal();renderPlayer();if(S.screen==='home')renderHome();
-    if(totals(me).points>0)saveRemote();
+    saveRemote();
   }catch(e){}
 }
 
@@ -649,6 +657,8 @@ function renderPlayer(){
   $('pAvatar').textContent=me.name.trim()[0].toUpperCase();
   $('pName').textContent=me.name+(me.turma?' · Turma '+me.turma:'');
   $('pPts').textContent=totals(me).points+' pts';
+  const rows=sortedRows(),k=rows.findIndex(r=>r.id===me.id);
+  $('pPos').hidden=k<0;if(k>=0)$('pPos').textContent=`${k+1}º lugar de ${rows.length}`;
 }
 
 /* ---------- Telas ---------- */
@@ -666,7 +676,7 @@ function renderHome(){
       <span class="tag">Nível ${L+1}</span>
       <h2>${lv.name}</h2>
       <span class="muted">${lv.sub}</span>
-      <span class="sample">${TRAILS[L][PHASES-1].long?TRAILS[L][0].q:TRAILS[L][PHASES-1].q.replace('?','□')}</span>
+      <span class="sample">${[...TRAILS[L]].reverse().find(e=>e.ask==='calc'&&!e.long).q.replace('?','□')}</span>
       <div class="bar"><i style="width:${n/PHASES*100}%"></i></div>
       <small>${n} de ${PHASES} fases</small>
     </button>`}).join('');
@@ -897,6 +907,12 @@ $('endAgain').onclick=()=>startQuiz(Z.L);
 $('endHome').onclick=$('quizBack').onclick=()=>{renderHome();show('home')};
 
 /* ---------- Início ---------- */
+const SEASON=2, LS_SEASON='labirinto-contas-temporada';
+if(lsGet(LS_SEASON,1)!==SEASON){
+  const all=players(),fresh={};
+  for(const [id,p] of Object.entries(all)){if(p&&p.name)fresh[id]={name:p.name,turma:p.turma||'',prog:encProg(emptyProg()),quiz:[0,0,0,0],stars:0,phases:0,quizPts:0,points:0,updatedAt:p.updatedAt||0}}
+  lsSet(LS_PLAYERS,fresh);lsSet(LS_SEASON,SEASON);
+}
 const cur=lsGet(LS_CURRENT,null);
 renderRanks();
 if(cur&&cur.name)login(cur.name,cur.turma);else{renderLogin();show('login')}

@@ -29,6 +29,11 @@ Cada trilha tem um **Gabarito do professor** com os 60 exercícios e as resposta
 - O ranking é online, no Firebase (Firestore, projeto `jogologico-fc23d`): todos os aparelhos da turma veem o mesmo placar, ao vivo.
 - Se o Firebase estiver fora do ar, o jogo continua funcionando e mostra o ranking salvo no próprio aparelho.
 - Ao abrir o jogo, todos os jogadores já salvos naquele aparelho são enviados para o ranking online, juntando com o que já estiver lá (vale sempre o melhor resultado de cada fase e de cada Desafio).
+- O ranking mostra **todos** os jogadores que já entraram, inclusive quem ainda está com 0 ponto, e aparece no topo da tela inicial com a posição de quem está jogando.
+
+### Recomeçar do zero (nova temporada)
+
+No código, a constante `SEASON` marca a temporada atual (hoje é a **2**). Quando um aparelho abre uma temporada nova, ele zera as fases, estrelas e recordes de todos os jogadores salvos nele, mas mantém os nomes. Para recomeçar de novo no futuro: aumente o número de `SEASON` e apague os documentos da coleção `ranking` no console do Firebase.
 
 ## Configurar o Firebase (uma vez só)
 
