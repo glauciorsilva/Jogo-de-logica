@@ -11,14 +11,16 @@ Jogo de lógica e matemática para o 3º ano do Ensino Fundamental. A criança a
 
 ## Conteúdo
 
-| Nível | Trilha do labirinto (30 fases) | Desafio de Matemática (10 perguntas) |
+| Nível | Trilha do labirinto (60 fases) | Desafio de Matemática (10 perguntas) |
 |---|---|---|
 | Iniciante | Soma e subtração até 10, sequências | Contas até 10, maior número, sequência |
 | Intermediário | Contas até 50, tabuada do 2, 3 e 5, número que falta | Contas até 20, dobro, metade, tabuada do 2 e 3 |
 | Avançado | Contas até 100, tabuada até 5, duas operações | Contas até 50, tabuada até 5, dezenas e unidades |
 | Hard | Multiplicação com soma, parênteses, problemas | Contas até 100, tabuada até 10, repartir igualmente |
 
-Cada trilha tem um **Gabarito do professor** com os 30 exercícios e as respostas.
+Cada trilha tem duas partes: as fases 1 a 30 e as fases 31 a 60, um pouco mais desafiadoras e com tipos novos de pergunta (número que falta, maior e menor, dobro e metade, dezenas e unidades, repartir igualmente, sequência que dobra). O labirinto também cresce ao longo da trilha.
+
+Cada trilha tem um **Gabarito do professor** com os 60 exercícios e as respostas.
 
 ## Pontos e ranking
 

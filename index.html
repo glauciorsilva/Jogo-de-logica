@@ -135,6 +135,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .node.done .st{color:var(--surface)}
 .node.next{box-shadow:0 0 0 5px color-mix(in srgb,var(--lv) 30%,transparent)}
 .node:disabled{border-color:var(--line);color:var(--muted);cursor:not-allowed;background:transparent}
+.trail .part{grid-column:1/-1;font-family:var(--display);font-weight:600;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;color:var(--lv);padding-top:6px}
+.trail .part:not(:first-child){padding-top:16px;border-top:2px dashed var(--line)}
 .key{margin:22px 0 0;max-width:640px;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:4px 16px}
 .key summary{cursor:pointer;font-family:var(--display);font-weight:600;padding:10px 0}
 .key ol{margin:0 0 12px;padding-left:2.2em;display:grid;gap:4px;font-variant-numeric:tabular-nums}
@@ -230,7 +232,7 @@ footer{margin-top:36px;font-size:.85rem;color:var(--muted)}
         <li><span class="chip flag">⚑</span> chegada</li>
       </ul>
     </header>
-    <div class="sectionhead"><h2>Trilhas do labirinto</h2><span class="muted">30 fases em cada nível</span></div>
+    <div class="sectionhead"><h2>Trilhas do labirinto</h2><span class="muted">60 fases em cada nível</span></div>
     <div class="levels" id="levels"></div>
     <div class="duo">
       <div class="panel quizcard">
@@ -241,7 +243,7 @@ footer{margin-top:36px;font-size:.85rem;color:var(--muted)}
       </div>
       <div class="panel rank" id="rankHome"></div>
     </div>
-    <footer>Protótipo para o 3º ano · 4 níveis × 30 fases + Desafio de Matemática.</footer>
+    <footer>Protótipo para o 3º ano · 4 níveis × 60 fases + Desafio de Matemática.</footer>
   </section>
 
   <!-- Tela: trilha -->
@@ -253,7 +255,7 @@ footer{margin-top:36px;font-size:.85rem;color:var(--muted)}
     </div>
     <div class="trail" id="trailGrid"></div>
     <details class="key">
-      <summary>Gabarito do professor (30 exercícios)</summary>
+      <summary>Gabarito do professor (60 exercícios)</summary>
       <ol id="keyList"></ol>
     </details>
   </section>
@@ -336,7 +338,7 @@ const LEVELS=[
   {name:'Avançado',sub:'Um pouco mais complexo',size:7,color:'--l2'},
   {name:'Hard',sub:'Difícil pra caramba',size:8,color:'--l3'}
 ];
-const PHASES=30, QUIZ_N=10;
+const PHASES=60, QUIZ_N=10;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -356,8 +358,9 @@ function withOpts(ex,r){
 const ASK={calc:'Quanto é?',seq:'Qual número vem depois?',miss:'Qual número está faltando?',story:'Resolva o problema',big:'Qual é o maior?',small:'Qual é o menor?',dbl:'Dobro',half:'Metade'};
 function seqOf(start,step,n){const t=[start];for(let k=1;k<n;k++)t.push(t[k-1]+step);return t}
 
-function makeExercise(L,i){
-  const r=rng(7919*(L+1)+i*131+17);
+function makeExercise(L,i,salt){
+  const r=rng(7919*(L+1)+i*131+17+(salt||0)*99991);
+  if(i>=30)return withOpts(makeExtra(L,i-30,r),r);
   let ex;
   if(L===0){
     const kind=['add','sub','seq'][i%3];
@@ -394,7 +397,60 @@ function makeExercise(L,i){
   }
   return withOpts(ex,r);
 }
-const TRAILS=LEVELS.map((_,L)=>Array.from({length:PHASES},(_,i)=>makeExercise(L,i)));
+
+/* Fases 31 a 60: um pouco mais difíceis e com tipos novos de pergunta */
+function makeExtra(L,j,r){
+  if(L===0){
+    const kind=['add','miss','sub','seq','cmp'][j%5];
+    if(kind==='add'){const a=ri(r,2,8),b=ri(r,1,10-a);return {ask:'calc',q:`${a} + ${b} = ?`,a:a+b,hint:`Comece no ${a} e conte mais ${b}.`}}
+    if(kind==='miss'){const c=ri(r,4,10),b=ri(r,1,c-1);return {ask:'miss',q:`? + ${b} = ${c}`,a:c-b,hint:`Que número somado com ${b} dá ${c}? Conte do ${b} até o ${c}.`}}
+    if(kind==='sub'){const a=ri(r,5,10),b=ri(r,2,a-1);return {ask:'calc',q:`${a} − ${b} = ?`,a:a-b,hint:`Tenha ${a} e tire ${b}.`}}
+    if(kind==='seq'){const st=pick(r,[1,2]),t=seqOf(ri(r,8+st*4,14),-st,5);return {ask:'seq',q:`${t.slice(0,4).join(', ')}, ?`,a:t[4],hint:`Os números descem de ${st} em ${st}.`}}
+    return compareDoor(r,20);
+  }
+  if(L===1){
+    const kind=['add','sub','mul','dbl','miss','half','seq'][j%7];
+    if(kind==='add'){const a=ri(r,20,40),b=ri(r,5,Math.min(20,60-a));return {ask:'calc',q:`${a} + ${b} = ?`,a:a+b,hint:`Some primeiro as dezenas, depois as unidades.`}}
+    if(kind==='sub'){const a=ri(r,30,60),b=ri(r,5,20);return {ask:'calc',q:`${a} − ${b} = ?`,a:a-b,hint:`Tire primeiro as dezenas, depois as unidades.`}}
+    if(kind==='mul'){const f=pick(r,[2,3,4,5]),n=ri(r,2,6);return {ask:'calc',q:`${f} × ${n} = ?`,a:f*n,hint:`${f} × ${n} é somar o ${n}, ${f} vezes.`}}
+    if(kind==='dbl'){const n=ri(r,5,15);return {ask:'dbl',q:`O dobro de ${n} é ?`,a:2*n,hint:`Dobro é o número somado com ele mesmo: ${n} + ${n}.`}}
+    if(kind==='half'){const n=2*ri(r,3,15);return {ask:'half',q:`A metade de ${n} é ?`,a:n/2,hint:`Metade é dividir em 2 partes iguais. Que número + ele mesmo dá ${n}?`}}
+    if(kind==='miss'){const a=ri(r,10,25),b=ri(r,5,15);return {ask:'miss',q:`? + ${b} = ${a+b}`,a,hint:`Que número somado com ${b} dá ${a+b}?`}}
+    const st=pick(r,[2,3,4]),t=seqOf(ri(r,0,10),st,5);return {ask:'seq',q:`${t.slice(0,4).join(', ')}, ?`,a:t[4],hint:`Os números sobem de ${st} em ${st}.`};
+  }
+  if(L===2){
+    const kind=['add','sub','mul','tens','two','miss','seq'][j%7];
+    if(kind==='add'){const a=ri(r,40,75),b=ri(r,15,Math.min(49,99-a));return {ask:'calc',q:`${a} + ${b} = ?`,a:a+b,hint:`Se as unidades passarem de 9, vai 1 para as dezenas.`}}
+    if(kind==='sub'){const a=ri(r,60,99),b=ri(r,15,Math.min(59,a-10));return {ask:'calc',q:`${a} − ${b} = ?`,a:a-b,hint:`Tire as dezenas primeiro, depois as unidades.`}}
+    if(kind==='mul'){const f=ri(r,2,6),n=ri(r,4,10);return {ask:'calc',q:`${f} × ${n} = ?`,a:f*n,hint:`Lembre da tabuada do ${f}.`}}
+    if(kind==='tens'){const d=ri(r,2,9),u=ri(r,1,9);return r()<.5?{ask:'calc',long:true,q:`${d} dezenas e ${u} unidades formam o número ?`,a:d*10+u,hint:`Cada dezena vale 10: ${d} dezenas são ${d*10}.`}:{ask:'calc',long:true,q:`Quantas dezenas tem o número ${d*10+u}?`,a:d,hint:`O algarismo da esquerda mostra as dezenas.`}}
+    if(kind==='two'){const a=ri(r,10,30),b=ri(r,5,20),c=ri(r,5,Math.min(25,a+b-1));return {ask:'calc',q:`${a} + ${b} − ${c} = ?`,a:a+b-c,hint:`Primeiro faça ${a} + ${b}, depois tire ${c}.`}}
+    if(kind==='miss'){const c=ri(r,10,40),b=ri(r,5,20);return {ask:'miss',q:`? − ${b} = ${c}`,a:b+c,hint:`O número que falta é ${c} + ${b}.`}}
+    const st=pick(r,[5,10]),t=seqOf(st*ri(r,8,10),-st,5);return {ask:'seq',q:`${t.slice(0,4).join(', ')}, ?`,a:t[4],hint:`Os números descem de ${st} em ${st}.`};
+  }
+  const kind=['mulAdd','share','missMul','paren','story','seqDouble','mulSub'][j%7];
+  if(kind==='mulAdd'){const a=ri(r,3,9),b=ri(r,4,9),c=ri(r,5,20);return {ask:'calc',q:`${a} × ${b} + ${c} = ?`,a:a*b+c,hint:`Faça a multiplicação primeiro: ${a} × ${b}.`}}
+  if(kind==='mulSub'){const a=ri(r,4,9),b=ri(r,4,9),c=ri(r,3,15);return {ask:'calc',q:`${a} × ${b} − ${c} = ?`,a:a*b-c,hint:`Multiplique primeiro, depois tire ${c}.`}}
+  if(kind==='share'){const p=ri(r,2,6),c=ri(r,3,9),P=pick(r,['Léo','Bia','Davi','Lara','Caio','Nina']);return {ask:'story',long:true,q:`${P} tem ${p*c} figurinhas e vai repartir igualmente entre ${p} amigos. Quantas cada um ganha?`,a:c,hint:`Que número vezes ${p} dá ${p*c}?`}}
+  if(kind==='missMul'){const f=ri(r,3,9),n=ri(r,3,9);return {ask:'miss',q:`${f} × ? = ${f*n}`,a:n,hint:`Pense na tabuada do ${f}: qual número vezes ${f} dá ${f*n}?`}}
+  if(kind==='paren'){const a=ri(r,4,9),b=ri(r,1,a-1),c=ri(r,2,5);return r()<.5?{ask:'calc',q:`(${a} − ${b}) × ${c} = ?`,a:(a-b)*c,hint:`Resolva primeiro o que está entre parênteses.`}:{ask:'calc',q:`${c} × (${a} + ${b}) = ?`,a:c*(a+b),hint:`Resolva primeiro o que está entre parênteses.`}}
+  if(kind==='story'){
+    if(r()<.5){const v=ri(r,2,9),n=ri(r,2,5);return {ask:'story',long:true,q:`Um picolé custa ${v} reais. Quanto custam ${n} picolés?`,a:v*n,hint:`Some ${v} reais ${n} vezes, ou faça ${n} × ${v}.`}}
+    const f=ri(r,3,6),n=ri(r,3,6),s=ri(r,2,8);return {ask:'story',long:true,q:`Na sala há ${f} fileiras com ${n} cadeiras cada. ${s} cadeiras estão vazias. Quantas estão ocupadas?`,a:f*n-s,hint:`Primeiro ${f} × ${n}, depois tire ${s}.`};
+  }
+  const t=[ri(r,1,3)];for(let k=1;k<5;k++)t.push(t[k-1]*2);
+  return {ask:'seq',q:`${t.slice(0,4).join(', ')}, ?`,a:t[4],hint:`Cada número é o dobro do anterior.`};
+}
+function compareDoor(r,max){
+  const set=new Set();while(set.size<4)set.add(ri(r,1,max));
+  const opts=[...set],big=r()<.5,a=big?Math.max(...opts):Math.min(...opts);
+  return {ask:big?'big':'small',q:big?'Qual número é o maior?':'Qual número é o menor?',a,opts:shuffle(opts,r),hint:big?'O maior é o que fica mais longe do zero.':'O menor é o que fica mais perto do zero.'};
+}
+const TRAILS=LEVELS.map((_,L)=>{const seen=new Set(),out=[];
+  for(let i=0;i<PHASES;i++){let ex=makeExercise(L,i),k=0;
+    while(i>=30&&seen.has(ex.q)&&k<30)ex=makeExercise(L,i,++k);
+    seen.add(ex.q);out.push(ex)}
+  return out});
 
 /* ---------- Matemática básica (Desafio, perguntas novas a cada partida) ---------- */
 const NAMES=['Léo','Bia','Davi','Lara','Caio','Nina','Théo','Alice'];
@@ -435,7 +491,7 @@ function makeBasic(L,r){
 /* ---------- Labirinto ---------- */
 const D={n:[0,-1,'s'],s:[0,1,'n'],e:[1,0,'w'],w:[-1,0,'e']};
 function makeMaze(L,i){
-  const size=LEVELS[L].size+(i>=15?1:0), w=size, h=size;
+  const size=LEVELS[L].size+(i>=15?1:0)+(i>=45?1:0), w=size, h=size;
   const r=rng(104729*(L+1)+i*7+3);
   const cells=Array.from({length:h},()=>Array.from({length:w},()=>({n:1,s:1,e:1,w:1,v:0})));
   const stack=[[0,0]];cells[0][0].v=1;
@@ -583,8 +639,9 @@ function renderTrail(){
   const nextI=me.prog[L].findIndex(v=>!v);
   $('trailGrid').innerHTML=TRAILS[L].map((_,i)=>{
     const st=me.prog[L][i],open=unlocked(L,i);
+    const part=i===0?'<div class="part">Parte 1 · fases 1 a 30</div>':i===30?'<div class="part">Parte 2 · fases 31 a 60 · mais desafiadoras</div>':'';
     const cls=['node',st?'done':'',i===nextI&&open?'next':''].join(' ');
-    return `<button class="${cls}" data-i="${i}" ${open?'':'disabled'} aria-label="Fase ${i+1}${st?', '+st+' estrelas':''}${open?'':', bloqueada'}">${open?i+1:'🔒'}${st?`<span class="st">${'★'.repeat(st)}</span>`:''}</button>`}).join('');
+    return part+`<button class="${cls}" data-i="${i}" ${open?'':'disabled'} aria-label="Fase ${i+1}${st?', '+st+' estrelas':''}${open?'':', bloqueada'}">${open?i+1:'🔒'}${st?`<span class="st">${'★'.repeat(st)}</span>`:''}</button>`}).join('');
   $('keyList').innerHTML=TRAILS[L].map(ex=>`<li>${ex.q.replace('?','<u>?</u>')} → <b>${ex.a}</b></li>`).join('');
 }
 $('trailGrid').addEventListener('click',e=>{const b=e.target.closest('.node');if(!b||b.disabled)return;startPhase(+b.dataset.i)});
