@@ -585,7 +585,30 @@ async function connectDb(){
       rankOnline=true;renderRanks();
     },()=>{rankOnline=false;renderRanks()});
   }catch(e){db=null}
+  if(!db)return;
+  await syncLocalPlayers();
   if(me)mergeRemote();
+}
+// Envia para o banco online todos os jogadores já salvos neste aparelho (juntando com o que já estiver lá).
+async function syncLocalPlayers(){
+  if(me)saveLocal();
+  const all=players();let changed=false;
+  for(const [id,p] of Object.entries(all)){
+    if(!p||typeof p.name!=='string'||p.name.trim().length<2)continue;
+    const loc={id,name:p.name.trim().slice(0,24),turma:String(p.turma||'').slice(0,10),prog:normProg(p.prog),quiz:normQuiz(p.quiz)};
+    try{
+      const ref=db.collection('ranking').doc(id),snap=await ref.get();
+      let remotePts=-1;
+      if(snap.exists){const v=snap.data()||{};remotePts=+v.points||0;const rp=normProg(v.prog),rq=normQuiz(v.quiz);
+        loc.prog=loc.prog.map((row,L)=>row.map((x,i)=>Math.max(x,rp[L][i])));
+        loc.quiz=loc.quiz.map((x,L)=>Math.max(x,rq[L]));}
+      const pts=totals(loc).points;
+      if(pts===0)continue;
+      all[id]=record(loc);changed=true;
+      if(pts!==remotePts)await ref.set(record(loc));
+    }catch(e){if(e&&(e.code==='permission-denied'||e.code==='invalid_argument'||e.code==='revoked'))break}
+  }
+  if(changed){lsSet(LS_PLAYERS,all);if(me&&all[me.id]){me.prog=normProg(all[me.id].prog);me.quiz=normQuiz(all[me.id].quiz);renderPlayer()}}
 }
 async function mergeRemote(){
   if(!db||!me)return;

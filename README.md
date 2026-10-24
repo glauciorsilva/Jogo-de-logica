@@ -28,6 +28,7 @@ Cada trilha tem um **Gabarito do professor** com os 60 exercícios e as resposta
 - No Desafio, cada acerto vale 10, 20, 30 ou 40 pontos, conforme o nível. Conta o melhor resultado de cada nível.
 - O ranking é online, no Firebase (Firestore, projeto `jogologico-fc23d`): todos os aparelhos da turma veem o mesmo placar, ao vivo.
 - Se o Firebase estiver fora do ar, o jogo continua funcionando e mostra o ranking salvo no próprio aparelho.
+- Ao abrir o jogo, todos os jogadores já salvos naquele aparelho são enviados para o ranking online, juntando com o que já estiver lá (vale sempre o melhor resultado de cada fase e de cada Desafio).
 
 ## Configurar o Firebase (uma vez só)
 
@@ -41,7 +42,6 @@ O que a regra faz:
 - Ninguém **apaga** pelo jogo. Para zerar o ranking, apague os documentos da coleção `ranking` pelo console.
 - Qualquer outra coleção fica bloqueada.
 
-## Publicar no GitHub Pages
+## Onde o jogo está publicado
 
-Em **Settings → Pages**, escolha *Deploy from a branch*, branch `main`, pasta `/ (root)`. O jogo fica em `https://glauciorsilva.github.io/Jogo-de-logica/`.
-
+O jogo está na **Vercel**: [joglog.vercel.app](https://joglog.vercel.app). O projeto `joglog` está ligado a este repositório, então cada commit na branch `main` é publicado sozinho em cerca de um minuto.
