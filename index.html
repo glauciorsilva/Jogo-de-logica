@@ -143,17 +143,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 /* Jogo */
 .hud{display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:.95rem}
 .hud .pill{background:var(--surface);border:2px solid var(--line);border-radius:99px;padding:4px 12px;font-variant-numeric:tabular-nums}
-.stage{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:start}
-@media (max-width:720px){.stage{grid-template-columns:minmax(0,1fr)}}
+.stage{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;justify-items:center}
 .board{min-width:0;display:grid;justify-items:center}
 #cv{display:block;max-width:100%;touch-action:none;border-radius:16px}
 #cv.bump{animation:bump .18s}
 @keyframes bump{30%{transform:translateX(-4px)}70%{transform:translateX(4px)}}
 .side{display:grid;gap:14px;justify-items:center}
-.dpad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:6px}
-.dpad button{border-radius:16px;background:var(--surface);border:2px solid var(--line);font-size:1.5rem;font-family:var(--display);display:grid;place-items:center}
-.dpad button:active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .r{grid-column:3;grid-row:2}.dpad .d{grid-column:2;grid-row:3}
 .tip{font-size:.9rem;color:var(--muted);text-align:center;max-width:220px;margin:0}
 
 /* Desafio de matemática */
@@ -276,16 +271,8 @@ footer{margin-top:36px;font-size:.85rem;color:var(--muted)}
       <span class="pill" id="hudMoves">Passos: 0</span>
     </div>
     <div class="stage">
-      <div class="board"><canvas id="cv" role="img" aria-label="Labirinto"></canvas></div>
-      <div class="side">
-        <div class="dpad" aria-label="Setas para andar">
-          <button class="u" data-dir="n" aria-label="Para cima">▲</button>
-          <button class="l" data-dir="w" aria-label="Para a esquerda">◀</button>
-          <button class="r" data-dir="e" aria-label="Para a direita">▶</button>
-          <button class="d" data-dir="s" aria-label="Para baixo">▼</button>
-        </div>
-        <p class="tip">Use as setas do teclado, estes botões ou deslize o dedo no labirinto.</p>
-      </div>
+      <p class="tip"><b>Toque</b> no lugar para onde quer ir, ou <b>arraste o dedo</b> pelo caminho. A bolinha vai sozinha.</p>
+      <div class="board"><canvas id="cv" role="img" aria-label="Labirinto. Toque no lugar para onde quer ir."></canvas></div>
     </div>
   </section>
 
@@ -607,7 +594,7 @@ $('restart').onclick=()=>startPhase(S.phase);
 
 function startPhase(i){
   S.phase=i;S.maze=makeMaze(S.level,i);S.pos={x:0,y:0};S.draw={x:0,y:0};
-  S.doorOpen=false;S.errors=0;S.moves=0;S.visited=new Set(['0,0']);
+  S.doorOpen=false;S.errors=0;S.moves=0;S.target=null;S.anim=false;dragging=false;S.visited=new Set(['0,0']);
   $('game').style.setProperty('--lv',lvColor(S.level));
   $('gameTitle').textContent=`${LEVELS[S.level].name} · Fase ${i+1} de ${PHASES}`;
   $('modal').hidden=true;$('win').hidden=true;hud();show('game');
@@ -628,6 +615,7 @@ function draw(){
   const avail=Math.min(cv.parentElement.clientWidth,560);
   const lw0=Math.max(3,avail/m.w*.1),pad=Math.ceil(lw0);
   const cell=Math.floor((avail-pad*2)/m.w),W=cell*m.w+pad*2,H=cell*m.h+pad*2,dpr=window.devicePixelRatio||1;
+  S.geo={pad,cell};
   if(cv.width!==W*dpr||cv.height!==H*dpr){cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px'}
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
   const c={floor:col('--floor'),trail:col('--trail'),wall:col('--wall'),accent:col('--accent'),ai:col('--accent-ink'),teal:col('--teal'),door:col('--door'),di:col('--door-ink')};
@@ -654,6 +642,10 @@ function draw(){
     if(y===m.h-1&&k.s){ctx.moveTo(X(x),Y(y+1));ctx.lineTo(X(x+1),Y(y+1))}
     if(x===m.w-1&&k.e){ctx.moveTo(X(x+1),Y(y));ctx.lineTo(X(x+1),Y(y+1))}}
   ctx.stroke();
+  if(S.target&&(S.target.x!==S.pos.x||S.target.y!==S.pos.y)){
+    ctx.strokeStyle=c.accent;ctx.lineWidth=Math.max(2,cell*.06);ctx.setLineDash([cell*.1,cell*.08]);
+    ctx.beginPath();ctx.arc(X(S.target.x)+cell/2,Y(S.target.y)+cell/2,cell*.28,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  }
   const px=X(S.draw.x)+cell/2,py=Y(S.draw.y)+cell/2;
   ctx.fillStyle=c.accent;ctx.beginPath();ctx.arc(px,py,cell*.3,0,Math.PI*2);ctx.fill();
   ctx.fillStyle=c.ai;for(const s of [-1,1]){ctx.beginPath();ctx.arc(px+s*cell*.1,py-cell*.05,cell*.05,0,Math.PI*2);ctx.fill()}
@@ -678,10 +670,38 @@ function move(dir){
   if(m.cells[y][x][dir]){cv.classList.remove('bump');void cv.offsetWidth;cv.classList.add('bump');return}
   const nx=x+D[dir][0],ny=y+D[dir][1];
   if(!S.doorOpen&&nx===m.door.x&&ny===m.door.y){S.pendingDir=dir;ask();return}
-  S.moves++;S.visited.add(nx+','+ny);hud();
-  glide(nx,ny,()=>{if(nx===m.w-1&&ny===m.h-1)finish()});
+  S.moves++;S.visited.add(nx+','+ny);hud();S.anim=true;
+  glide(nx,ny,()=>{S.anim=false;if(nx===m.w-1&&ny===m.h-1){S.target=null;finish()}else walk()});
 }
-document.querySelector('.dpad').addEventListener('click',e=>{const b=e.target.closest('[data-dir]');if(b)move(b.dataset.dir)});
+
+/* ---------- Toque: tocar num lugar ou arrastar o dedo ---------- */
+// Caminho mais curto pelas passagens abertas até a casa tocada; anda um passo por vez.
+function firstStep(tx,ty){
+  const m=S.maze,{x:sx,y:sy}=S.pos;if(sx===tx&&sy===ty)return null;
+  const prev={[sx+','+sy]:null},q=[[sx,sy]];
+  while(q.length){const [x,y]=q.shift();if(x===tx&&y===ty)break;
+    for(const k in D){if(m.cells[y][x][k])continue;const nx=x+D[k][0],ny=y+D[k][1],key=nx+','+ny;if(key in prev)continue;prev[key]=[x,y,k];q.push([nx,ny])}}
+  let key=tx+','+ty;if(!(key in prev))return null;
+  let p=prev[key];while(p&&!(p[0]===sx&&p[1]===sy)){key=p[0]+','+p[1];p=prev[key]}
+  return p?p[2]:null;
+}
+function walk(){
+  if(S.anim||!S.target||S.screen!=='game'||!$('modal').hidden||!$('win').hidden)return;
+  const d=firstStep(S.target.x,S.target.y);
+  if(!d){S.target=null;draw();return}
+  move(d);
+}
+function cellAt(ev){
+  if(!S.geo)return null;const b=cv.getBoundingClientRect(),{pad,cell}=S.geo;
+  const x=Math.floor((ev.clientX-b.left-pad)/cell),y=Math.floor((ev.clientY-b.top-pad)/cell);
+  return x>=0&&y>=0&&x<S.maze.w&&y<S.maze.h?{x,y}:null;
+}
+let dragging=false;
+function aim(ev){const c=cellAt(ev);if(!c)return;if(!S.target||S.target.x!==c.x||S.target.y!==c.y){S.target=c;draw()}walk()}
+cv.addEventListener('pointerdown',e=>{if(S.screen!=='game')return;e.preventDefault();dragging=true;try{cv.setPointerCapture(e.pointerId)}catch(_){}aim(e)});
+cv.addEventListener('pointermove',e=>{if(dragging)aim(e)});
+const stopDrag=()=>{dragging=false};
+cv.addEventListener('pointerup',stopDrag);cv.addEventListener('pointercancel',stopDrag);
 const KEYS={ArrowUp:'n',ArrowDown:'s',ArrowLeft:'w',ArrowRight:'e',w:'n',s:'s',a:'w',d:'e'};
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
@@ -689,13 +709,9 @@ addEventListener('keydown',e=>{
     const box=!$('modal').hidden?$('qOpts'):S.screen==='quiz'&&!$('quizCard').hidden?$('zOpts'):null;
     if(box){const b=box.children[+e.key-1];if(b&&!b.disabled)b.click();return}
   }
-  if(e.key==='Escape'&&!$('modal').hidden){$('modal').hidden=true;return}
-  const d=KEYS[e.key];if(d&&S.screen==='game'){e.preventDefault();move(d)}
+  if(e.key==='Escape'&&!$('modal').hidden){$('modal').hidden=true;S.target=null;draw();return}
+  const d=KEYS[e.key];if(d&&S.screen==='game'){e.preventDefault();if(S.anim)return;S.target=null;move(d)}
 });
-let touch=null;
-cv.addEventListener('touchstart',e=>{const t=e.touches[0];touch={x:t.clientX,y:t.clientY}},{passive:true});
-cv.addEventListener('touchend',e=>{if(!touch)return;const t=e.changedTouches[0],dx=t.clientX-touch.x,dy=t.clientY-touch.y;touch=null;
-  if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;move(Math.abs(dx)>Math.abs(dy)?(dx>0?'e':'w'):(dy>0?'s':'n'))});
 
 /* ---------- Porta (pergunta) ---------- */
 function ask(){
@@ -719,7 +735,7 @@ $('qOpts').addEventListener('click',e=>{
     fb.textContent=`Ainda não. Dica: ${ex.hint}`;fb.className='fb no';
   }
 });
-$('qClose').onclick=()=>{$('modal').hidden=true};
+$('qClose').onclick=()=>{$('modal').hidden=true;S.target=null;draw()};
 
 /* ---------- Fim de fase ---------- */
 function finish(){

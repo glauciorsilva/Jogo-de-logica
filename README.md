@@ -6,7 +6,7 @@ Jogo de lógica e matemática para o 3º ano do Ensino Fundamental. A criança a
 
 1. Escreva seu nome (e a turma, se quiser) na tela de entrada.
 2. Escolha uma trilha do labirinto ou o Desafio de Matemática.
-3. No labirinto, ande com as setas do teclado, os botões da tela ou deslizando o dedo.
+3. No labirinto, toque no lugar para onde quer ir ou arraste o dedo pelo caminho (no computador, as setas do teclado também funcionam).
 4. Na porta, escolha a resposta certa. Errou? Aparece uma dica.
 
 ## Conteúdo
